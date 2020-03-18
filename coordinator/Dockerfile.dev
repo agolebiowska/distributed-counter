@@ -1,0 +1,31 @@
+## First stage
+FROM golang:alpine AS builder
+
+ENV CGO_ENABLED 0
+
+WORKDIR /go/src
+COPY . .
+
+RUN apk add --no-cache git
+RUN go get ./...
+
+# The -gcflags "all=-N -l" flag helps us get a better debug experience
+RUN go build -gcflags "all=-N -l" -o /server main.go
+
+# Get debugger
+RUN go get github.com/go-delve/delve/cmd/dlv
+
+## Second stage
+# in Dockerfile.dev keep the golang:alpine img
+# to be able to run go test ./... in the container
+FROM golang:alpine
+
+# Allow delve to run on Alpine based containers.
+RUN apk add --no-cache libc6-compat build-base
+
+WORKDIR /
+COPY --from=builder /server /
+COPY --from=builder /go/bin/dlv /
+
+# Run debugger
+CMD ["/dlv", "--listen=:40000", "--headless=true", "--api-version=2", "exec", "/server"]

@@ -1,0 +1,15 @@
+version: '3'
+services:
+  coordinator:
+    container_name: coordinator
+    build:
+      context: coordinator
+      dockerfile: ${DOCKERFILE}
+    security_opt:
+      - seccomp:unconfined
+    ports:
+      - ${HTTP_PORT}:8080
+      - ${DEBUG_PORT}:40000
+    restart: on-failure
+    volumes:
+      - .:/go/src
