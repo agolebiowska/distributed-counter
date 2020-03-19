@@ -1,17 +1,20 @@
 ## First stage
 FROM golang:alpine AS builder
 
+ENV GO111MODULE=on
 ENV CGO_ENABLED 0
 
-WORKDIR /go/src
+WORKDIR /src
+COPY go.mod .
+COPY go.sum .
+RUN go mod download
+
 COPY . .
 
-RUN apk add --no-cache git
-RUN go get ./...
-
 # The -gcflags "all=-N -l" flag helps us get a better debug experience
-RUN go build -gcflags "all=-N -l" -o /server .
+RUN go build -gcflags "all=-N -l" -o server
 
+RUN apk add --no-cache git
 # Get debugger
 RUN go get github.com/go-delve/delve/cmd/dlv
 
@@ -23,8 +26,7 @@ FROM golang:alpine
 # Allow delve to run on Alpine based containers.
 RUN apk add --no-cache libc6-compat build-base
 
-WORKDIR /
-COPY --from=builder /server /
+COPY --from=builder /src/server /
 COPY --from=builder /go/bin/dlv /
 
 # Run debugger

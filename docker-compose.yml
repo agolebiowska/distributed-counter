@@ -12,7 +12,7 @@ services:
       - ${DEBUG_PORT}:40000
     restart: on-failure
     networks:
-      - default
+      - net
     volumes:
       - .:/go/src
 
@@ -26,13 +26,14 @@ services:
     security_opt:
       - seccomp:unconfined
     ports:
-      - ${HTTP_PORT}:8080
-      - ${DEBUG_PORT}:40000
+      - ${COUNTER_HTTP_PORT}:8080
+      - ${COUNTER_DEBUG_PORT}:40000
     restart: on-failure
     networks:
-      - default
+      - net
     volumes:
       - .:/go/src
 
 networks:
-  default:
+  net:
+    driver: bridge

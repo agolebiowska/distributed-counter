@@ -1,6 +1,6 @@
 DOCKER_COMPOSE_FILE		:= "docker-compose.yml"
-DOCKERFILE_FILE			:= "Dockerfile"
-DOCKERFILEDEV_FILE		:= "Dockerfile.dev"
+DOCKERFILE_FILE			:= "../Dockerfile"
+DOCKERFILEDEV_FILE		:= "../Dockerfile.dev"
 
 # Builds & run a production-ready image
 .PHONY: prod
@@ -12,7 +12,7 @@ prod:
 dev:
 	DOCKERFILE=${DOCKERFILEDEV_FILE} docker-compose up -d --build
 
-# Removes all containes and all volumes
+# Removes all containers and all volumes
 .PHONY: build-rm-containers
 build-rm-containers:
 	docker-compose -f ${DOCKER_COMPOSE_FILE} down -v
