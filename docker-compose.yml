@@ -11,5 +11,28 @@ services:
       - ${HTTP_PORT}:8080
       - ${DEBUG_PORT}:40000
     restart: on-failure
+    networks:
+      - default
     volumes:
       - .:/go/src
+
+  counter:
+    container_name: counter
+    build:
+      context: counter
+      dockerfile: ${DOCKERFILE}
+    depends_on:
+      - coordinator
+    security_opt:
+      - seccomp:unconfined
+    ports:
+      - ${HTTP_PORT}:8080
+      - ${DEBUG_PORT}:40000
+    restart: on-failure
+    networks:
+      - default
+    volumes:
+      - .:/go/src
+
+networks:
+  default:

@@ -11,12 +11,12 @@ import (
 
 func main() {
 	l := log.New(os.Stdout, "coordinator", log.LstdFlags)
-	n := NewCoordinator()
+	c := NewCoordinator()
 
 	sm := http.NewServeMux()
-	sm.Handle("/items/", NewItemsCount(l))
+	sm.Handle("/items/", NewItemsCount(l, c))
 	sm.Handle("/items", NewItemsAdd(l))
-	sm.Handle("/counters", NewCounterAdd(l, n))
+	sm.Handle("/counters", NewCounterAdd(l, c))
 
 	s := &http.Server{
 		Addr:         ":8080",
