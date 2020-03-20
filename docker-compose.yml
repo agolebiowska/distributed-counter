@@ -8,7 +8,7 @@ services:
     security_opt:
       - seccomp:unconfined
     ports:
-      - ${HTTP_PORT}:8080
+      - ${HTTP_PORT}:80
       - ${DEBUG_PORT}:40000
     restart: on-failure
     networks:
@@ -17,7 +17,6 @@ services:
       - .:/go/src
 
   counter:
-    container_name: counter
     build:
       context: counter
       dockerfile: ${DOCKERFILE}
@@ -25,9 +24,8 @@ services:
       - coordinator
     security_opt:
       - seccomp:unconfined
-    ports:
-      - ${COUNTER_HTTP_PORT}:8080
-      - ${COUNTER_DEBUG_PORT}:40000
+    expose:
+      - 80
     restart: on-failure
     networks:
       - net

@@ -13,27 +13,28 @@ import (
 )
 
 func main() {
-	// @todo: "apply" to coordinator with our address which gets us all items?
+	l := log.New(os.Stdout, "counter", log.LstdFlags)
+
 	me, err := os.Hostname()
 	if err != nil {
-		log.Fatal("[ERROR] Cannot obtain hostname:", err.Error())
+		l.Fatal("[ERROR] Cannot obtain hostname:", err.Error())
 	}
 
 	data := []byte(me)
 	items := Items{}
-	err = u.Do(http.MethodPost, "http://localhost:8080/counters", items, bytes.NewBuffer(data))
+	err = u.Do(http.MethodPost, "http://coordinator/counters", items, bytes.NewBuffer(data))
 	if err != nil {
-		log.Fatal("[ERROR] Cannot add counter:", err.Error())
+		l.Fatal("[ERROR] Cannot add counter: ", err.Error())
 	}
 
-	c := NewCounter(items)
-	log.Println(c)
-	log.Println(me)
+	c := NewCounter(me, items)
 
 	sm := http.NewServeMux()
+	sm.Handle("/init", NewInit(l, c))
+	sm.Handle("/abort", NewAbort(l, c))
 
 	s := &http.Server{
-		Addr:         ":8080",
+		Addr:         ":80",
 		Handler:      sm,
 		IdleTimeout:  120 * time.Second,
 		ReadTimeout:  1 * time.Second,
@@ -52,7 +53,7 @@ func main() {
 	signal.Notify(sigChan, os.Kill)
 
 	sig := <-sigChan
-	log.Println("Received terminate, graceful shutdown", sig)
+	l.Println("Received terminate, graceful shutdown", sig)
 
 	tc, _ := context.WithTimeout(context.Background(), 30*time.Second)
 	s.Shutdown(tc)

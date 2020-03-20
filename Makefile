@@ -5,7 +5,7 @@ DOCKERFILEDEV_FILE		:= "../Dockerfile.dev"
 # Builds & run a production-ready image
 .PHONY: prod
 prod:
-	DOCKERFILE=${DOCKERFILE_FILE} docker-compose up -d --build
+	DOCKERFILE=${DOCKERFILE_FILE} docker-compose up -d --build --scale counter=3
 
 # Builds & run a development-ready image
 .PHONY: dev

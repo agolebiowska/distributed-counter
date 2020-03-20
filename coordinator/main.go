@@ -15,11 +15,11 @@ func main() {
 
 	sm := http.NewServeMux()
 	sm.Handle("/items/", NewItemsCount(l, c))
-	sm.Handle("/items", NewItemsAdd(l))
+	sm.Handle("/items", NewItemsAdd(l, c))
 	sm.Handle("/counters", NewCounterAdd(l, c))
 
 	s := &http.Server{
-		Addr:         ":8080",
+		Addr:         ":80",
 		Handler:      sm,
 		IdleTimeout:  120 * time.Second,
 		ReadTimeout:  1 * time.Second,

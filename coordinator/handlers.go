@@ -1,12 +1,11 @@
 package main
 
 import (
+	"encoding/json"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"regexp"
-
-	u "github.com/agolebiowska/distributed-counter/utils"
 )
 
 type ItemsCount struct {
@@ -15,7 +14,8 @@ type ItemsCount struct {
 }
 
 type ItemsAdd struct {
-	log *log.Logger
+	log         *log.Logger
+	coordinator *Coordinator
 }
 
 type CounterAdd struct {
@@ -27,8 +27,8 @@ func NewItemsCount(l *log.Logger, c *Coordinator) *ItemsCount {
 	return &ItemsCount{l, c}
 }
 
-func NewItemsAdd(l *log.Logger) *ItemsAdd {
-	return &ItemsAdd{l}
+func NewItemsAdd(l *log.Logger, c *Coordinator) *ItemsAdd {
+	return &ItemsAdd{l, c}
 }
 
 func NewCounterAdd(l *log.Logger, c *Coordinator) *CounterAdd {
@@ -50,9 +50,8 @@ func (i *ItemsCount) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 		tenantID := g[0][1]
 		i.log.Println("[INFO] Handle GET items count per tenant:", tenantID)
 
-		count := i.coordinator.GetItemsCountPerTenant(tenantID)
-		err := u.ToJSON(rw, count)
-		if err != nil {
+		count := i.coordinator.getItemsCountPerTenant(tenantID)
+		if err := json.NewEncoder(rw).Encode(&count); err != nil {
 			i.log.Println("[ERROR] Unable to marshal json:", err)
 			http.Error(rw, "Unable to marshall json", http.StatusInternalServerError)
 		}
@@ -69,15 +68,21 @@ func (i *ItemsAdd) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 		i.log.Println("[INFO] Handle POST items")
 
 		items := Items{}
-		err := u.FromJSON(r.Body, items)
-		if err != nil {
+		if err := json.NewDecoder(r.Body).Decode(&items); err != nil {
 			i.log.Println("[ERROR] Unable to unmarshal json:", err)
 			http.Error(rw, "Unable to unmarshal json", http.StatusBadRequest)
 			return
 		}
 
-		// @todo: handle counter communication etc
-		rw.Write([]byte("items added"))
+		m := NewMessage(items)
+		if i.coordinator.canCommit(m) == false {
+			err := i.coordinator.abort(m)
+			if err != nil {
+				i.log.Println("[ERROR] Unable to abort:", err)
+				rw.WriteHeader(http.StatusInternalServerError)
+				rw.Write([]byte("Unable to abort"))
+			}
+		}
 		return
 
 	default:
@@ -97,11 +102,10 @@ func (c *CounterAdd) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 			return
 		}
 		counterAddr := string(counterAddrByte)
-		items := c.coordinator.GetItems()
-		c.coordinator.AcceptNewCounter(counterAddr)
+		items := c.coordinator.getItems()
+		c.coordinator.acceptNewCounter(counterAddr)
 
-		err = u.ToJSON(rw, items)
-		if err != nil {
+		if err := json.NewEncoder(rw).Encode(&items); err != nil {
 			log.Println("[ERROR] Unable to marshal json:", err)
 			http.Error(rw, "Unable to marshall json", http.StatusInternalServerError)
 			return
