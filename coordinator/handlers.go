@@ -83,6 +83,7 @@ func (i *ItemsAdd) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 				rw.Write([]byte("Unable to abort"))
 			}
 		}
+		i.coordinator.commit(m)
 		return
 
 	default:
@@ -106,7 +107,7 @@ func (c *CounterAdd) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 		c.coordinator.acceptNewCounter(counterAddr)
 
 		if err := json.NewEncoder(rw).Encode(&items); err != nil {
-			log.Println("[ERROR] Unable to marshal json:", err)
+			c.log.Println("[ERROR] Unable to marshal json:", err)
 			http.Error(rw, "Unable to marshall json", http.StatusInternalServerError)
 			return
 		}

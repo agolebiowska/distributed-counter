@@ -30,8 +30,10 @@ func main() {
 	c := NewCounter(me, items)
 
 	sm := http.NewServeMux()
+	sm.Handle("/count/", NewCountItems(l, c))
 	sm.Handle("/init", NewInit(l, c))
 	sm.Handle("/abort", NewAbort(l, c))
+	sm.Handle("/commit", NewCommit(l, c))
 
 	s := &http.Server{
 		Addr:         ":80",

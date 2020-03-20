@@ -1,6 +1,9 @@
 package main
 
+import "log"
+
 type Counter struct {
+	log      *log.Logger
 	Me       string
 	Items    Items
 	Messages Messages
@@ -16,6 +19,10 @@ type Message struct {
 	Content Items  `json:"content"`
 }
 
+type Count struct {
+	Value int `json:"count"`
+}
+
 type Items []*Item
 type Messages []*Message
 
@@ -24,6 +31,16 @@ func NewCounter(m string, i Items) *Counter {
 		Me:    m,
 		Items: i,
 	}
+}
+
+func (c *Counter) countItemsForTenant(tenantID string) *Count {
+	count := 0
+	for _, i := range c.Items {
+		if i.Tenant == tenantID {
+			count++
+		}
+	}
+	return &Count{count}
 }
 
 func (c *Counter) acceptMessage(m *Message) {

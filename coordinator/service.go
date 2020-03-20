@@ -107,3 +107,16 @@ func (c *Coordinator) abort(m *Message) error {
 	}
 	return nil
 }
+
+func (c *Coordinator) commit(m *Message) {
+	payload, _ := json.Marshal(m)
+	// Sends CAN COMMIT to all counters
+	for _, ctr := range c.Counters {
+		err := u.Do(http.MethodPost, fmt.Sprintf("http://%s/commit", ctr.Addr), nil, bytes.NewBuffer(payload))
+		if err != nil {
+			log.Printf("[ERROR] Unable to commit with payload %s for %s: %s", payload, ctr.Addr, err.Error())
+			return
+		}
+		ctr.HasItems = true
+	}
+}
