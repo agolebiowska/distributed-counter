@@ -68,7 +68,8 @@ func (i *ItemsAdd) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 	case http.MethodPost:
 		i.log.Println("[INFO] Handle POST items")
 
-		err := u.FromJSON(r.Body, Items{})
+		items := Items{}
+		err := u.FromJSON(r.Body, items)
 		if err != nil {
 			i.log.Println("[ERROR] Unable to unmarshal json:", err)
 			http.Error(rw, "Unable to unmarshal json", http.StatusBadRequest)
