@@ -22,7 +22,7 @@ func main() {
 	items := Items{}
 	err = u.Do(http.MethodPost, "http://localhost:8080/counters", items, bytes.NewBuffer(data))
 	if err != nil {
-		log.Fatal("[ERROR]: Cannot add counter:", err.Error())
+		log.Fatal("[ERROR] Cannot add counter:", err.Error())
 	}
 
 	c := NewCounter(items)
