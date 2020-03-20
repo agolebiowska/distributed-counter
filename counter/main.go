@@ -3,12 +3,13 @@ package main
 import (
 	"bytes"
 	"context"
-	u "github.com/agolebiowska/distributed-counter/utils"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
 	"time"
+
+	u "github.com/agolebiowska/distributed-counter/utils"
 )
 
 func main() {

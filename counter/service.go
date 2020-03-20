@@ -1,18 +1,18 @@
 package main
 
 type Counter struct {
-    Items Items
+	Items Items
 }
 
 type Item struct {
-    ID     string `json:"id"`
-    Tenant string `json:"tenant"`
+	ID     string `json:"id"`
+	Tenant string `json:"tenant"`
 }
 
 type Items []*Item
 
 func NewCounter(i Items) *Counter {
-    return &Counter{
-        Items: i,
-    }
+	return &Counter{
+		Items: i,
+	}
 }
