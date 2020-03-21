@@ -1,9 +1,9 @@
 package main
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -26,6 +26,14 @@ type CounterAdd struct {
 	coordinator *Coordinator
 }
 
+type HealthCheck struct {
+	log *log.Logger
+}
+
+type Status struct {
+	Message string `json:"message"`
+}
+
 func NewItemsCount(l *log.Logger, c *Coordinator) *ItemsCount {
 	return &ItemsCount{l, c}
 }
@@ -36,6 +44,10 @@ func NewItemsAdd(l *log.Logger, c *Coordinator) *ItemsAdd {
 
 func NewCounterAdd(l *log.Logger, c *Coordinator) *CounterAdd {
 	return &CounterAdd{l, c}
+}
+
+func NewHealthCheck(l *log.Logger) *HealthCheck {
+	return &HealthCheck{l}
 }
 
 func (h *ItemsCount) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
@@ -93,11 +105,13 @@ func (h *ItemsAdd) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 		m := NewMessage(items)
 		if h.coordinator.canCommit(m) == false {
 			h.coordinator.abort(m)
-
 			http.Error(rw, "Unable to add items", http.StatusInternalServerError)
 			return
 		}
 		h.coordinator.commit(m)
+		if err := json.NewEncoder(rw).Encode(Status{Message: "Success"}); err != nil {
+			return
+		}
 
 	default:
 		rw.WriteHeader(http.StatusMethodNotAllowed)
@@ -132,8 +146,8 @@ func (h *CounterAdd) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func Do(method string, url string, buf *bytes.Buffer) (*http.Response, error) {
-	req, err := http.NewRequest(method, url, buf)
+func Do(method string, url string, body io.Reader) (*http.Response, error) {
+	req, err := http.NewRequest(method, url, body)
 	if err != nil {
 		return nil, err
 	}
@@ -142,4 +156,8 @@ func Do(method string, url string, buf *bytes.Buffer) (*http.Response, error) {
 	client := http.Client{Timeout: 1 * time.Second}
 	resp, err := client.Do(req)
 	return resp, err
+}
+
+func (h *HealthCheck) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
+	h.log.Println("[INFO] Health check")
 }

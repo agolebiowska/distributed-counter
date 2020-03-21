@@ -10,6 +10,6 @@ RUN GOOS=linux GOARCH=amd64 go build -o server
 
 ## Second stage
 FROM alpine
-
+RUN apk add curl
 COPY --from=builder /src/server /src/
 CMD ["/src/server"]

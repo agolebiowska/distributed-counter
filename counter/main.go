@@ -30,6 +30,7 @@ func main() {
 	sm.Handle("/init", NewInit(l, c))
 	sm.Handle("/abort", NewAbort(l, c))
 	sm.Handle("/commit", NewCommit(l, c))
+	sm.Handle("/health", NewHealthCheck(l, c))
 
 	s := &http.Server{
 		Addr:         ":80",

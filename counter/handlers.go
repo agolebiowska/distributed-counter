@@ -32,6 +32,11 @@ type ItemsGet struct {
 	counter *Counter
 }
 
+type HealthCheck struct {
+	log     *log.Logger
+	counter *Counter
+}
+
 func NewInit(l *log.Logger, c *Counter) *Init {
 	return &Init{l, c}
 }
@@ -50,6 +55,10 @@ func NewCountItems(l *log.Logger, c *Counter) *CountItems {
 
 func NewItemsGet(l *log.Logger, c *Counter) *ItemsGet {
 	return &ItemsGet{l, c}
+}
+
+func NewHealthCheck(l *log.Logger, c *Counter) *HealthCheck {
+	return &HealthCheck{l, c}
 }
 
 func (h *CountItems) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
@@ -155,4 +164,8 @@ func (h *ItemsGet) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 	default:
 		rw.WriteHeader(http.StatusMethodNotAllowed)
 	}
+}
+
+func (h *HealthCheck) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
+	h.log.Printf("[INFO] %s healthy", h.counter.Me)
 }

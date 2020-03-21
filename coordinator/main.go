@@ -17,6 +17,7 @@ func main() {
 	sm.Handle("/items/", NewItemsCount(l, c))
 	sm.Handle("/items", NewItemsAdd(l, c))
 	sm.Handle("/counters", NewCounterAdd(l, c))
+	sm.Handle("/health", NewHealthCheck(l))
 
 	s := &http.Server{
 		Addr:         ":80",
@@ -25,6 +26,23 @@ func main() {
 		ReadTimeout:  1 * time.Second,
 		WriteTimeout: 1 * time.Second,
 	}
+
+	go func() {
+		for {
+			time.Sleep(30 * time.Second)
+			for i, counter := range c.Counters {
+				resp, err := Do(http.MethodGet, "http://"+counter.Addr, nil)
+				if err != nil {
+					l.Printf("[INFO] Health check failed: %s", err.Error())
+
+				}
+				if resp.StatusCode != 200 {
+					c.Counters = append(c.Counters[:i], c.Counters[i+1:]...)
+					l.Printf("[INFO] Removed %s from counters", counter.Addr)
+				}
+			}
+		}
+	}()
 
 	go func() {
 		err := s.ListenAndServe()
