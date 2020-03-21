@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"math/rand"
 	"net/http"
 	"time"
 )
@@ -59,7 +60,16 @@ func NewCoordinator() *Coordinator {
 }
 
 func NewMessage(items Items) *Message {
-	return &Message{ID: time.Now().String(), Content: items}
+	return &Message{ID: uuid(), Content: items}
+}
+
+func uuid() string {
+	b := make([]byte, 16)
+	_, err := rand.Read(b)
+	if err != nil {
+		return time.Now().String()
+	}
+	return fmt.Sprintf("%x-%x-%x-%x-%x", b[0:4], b[4:6], b[6:8], b[8:10], b[10:])
 }
 
 func (c *Coordinator) acceptNewCounter(counterAddr string) {
@@ -104,6 +114,8 @@ func (c *Coordinator) getItems() Items {
 	return items
 }
 
+// sends GET request to random counter
+// returns counted items for given tenantID
 func (c *Coordinator) getItemsCountPerTenant(tenantID string) (*Count, error) {
 	count := Count{}
 	var body []byte
@@ -134,6 +146,8 @@ func (c *Coordinator) getItemsCountPerTenant(tenantID string) (*Count, error) {
 	return &count, nil
 }
 
+// sends POST request to every counter
+// returns information whether all counters are ready to save data
 func (c *Coordinator) canCommit(m *Message) bool {
 	payload, err := json.Marshal(m)
 	if err != nil {
@@ -161,6 +175,8 @@ func (c *Coordinator) canCommit(m *Message) bool {
 	return len(agrees) == len(c.Counters)
 }
 
+// sends POST request to every counter
+// to delete a previously initiated message
 func (c *Coordinator) abort(m *Message) {
 	payload, err := json.Marshal(m)
 	if err != nil {
@@ -182,6 +198,8 @@ func (c *Coordinator) abort(m *Message) {
 	}
 }
 
+// sends POST request to every counter
+// to save data from previously initiated message
 func (c *Coordinator) commit(m *Message) {
 	payload, err := json.Marshal(m)
 	if err != nil {
