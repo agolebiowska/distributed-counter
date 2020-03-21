@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"math/rand"
 	"net/http"
 	"time"
@@ -87,18 +86,18 @@ func (c *Coordinator) getItems() Items {
 
 		resp, err := Do(http.MethodGet, fmt.Sprintf("http://%s/items", counter.Addr), nil)
 		if err != nil {
-			log.Printf("[ERROR] Cannot get items from counter %s: %s", counter.Addr, err.Error())
+			l.Printf("[ERROR] Cannot get items from counter %s: %s", counter.Addr, err.Error())
 			continue
 		}
 
 		if resp.StatusCode != http.StatusOK {
-			log.Printf("[ERROR] Unexpected status code %d from %s", resp.StatusCode, counter.Addr)
+			l.Printf("[ERROR] Unexpected status code %d from %s", resp.StatusCode, counter.Addr)
 			continue
 		}
 
 		body, err = ioutil.ReadAll(resp.Body)
 		if err != nil {
-			log.Printf("[ERROR] Cannot read response body from %s: %s", counter.Addr, err.Error())
+			l.Printf("[ERROR] Cannot read response body from %s: %s", counter.Addr, err.Error())
 			continue
 		}
 		counter.HasItems = true
@@ -107,7 +106,7 @@ func (c *Coordinator) getItems() Items {
 	if body != nil {
 		err := json.Unmarshal(body, &items)
 		if err != nil {
-			log.Printf("[ERROR] Cannot unmarshal json: %s ", err.Error())
+			l.Printf("[ERROR] Cannot unmarshal json: %s ", err.Error())
 		}
 	}
 
@@ -126,19 +125,19 @@ func (c *Coordinator) getItemsCountPerTenant(tenantID string) (*Count, error) {
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		log.Printf("[ERROR] Unexpected status code: %d", resp.StatusCode)
+		l.Printf("[ERROR] Unexpected status code: %d", resp.StatusCode)
 		return nil, errors.New("unexpected status code")
 	}
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		log.Printf("[ERROR] Cannot read response body: %s", err.Error())
+		l.Printf("[ERROR] Cannot read response body: %s", err.Error())
 		return nil, err
 	}
 
 	err = json.Unmarshal(body, &count)
 	if err != nil {
-		log.Printf("[ERROR] Cannot unmarshal json: %s ", err.Error())
+		l.Printf("[ERROR] Cannot unmarshal json: %s ", err.Error())
 		return nil, err
 	}
 
@@ -150,7 +149,7 @@ func (c *Coordinator) getItemsCountPerTenant(tenantID string) (*Count, error) {
 func (c *Coordinator) canCommit(m *Message) bool {
 	payload, err := json.Marshal(m)
 	if err != nil {
-		log.Printf("[ERROR] Unable to marshall message %+v: %s", m, err.Error())
+		l.Printf("[ERROR] Unable to marshall message %+v: %s", m, err.Error())
 	}
 
 	agrees := make([]bool, 0)
@@ -163,7 +162,7 @@ func (c *Coordinator) canCommit(m *Message) bool {
 			}
 		}(resp)
 		if err != nil {
-			log.Printf("[ERROR] Cannot init for %s: %s", counter.Addr, err.Error())
+			l.Printf("[ERROR] Cannot init for %s: %s", counter.Addr, err.Error())
 		}
 
 		if resp.StatusCode == http.StatusOK {
@@ -179,7 +178,7 @@ func (c *Coordinator) canCommit(m *Message) bool {
 func (c *Coordinator) abort(m *Message) {
 	payload, err := json.Marshal(m)
 	if err != nil {
-		log.Printf("[ERROR] Unable to marshall message %+v: %s", m, err.Error())
+		l.Printf("[ERROR] Unable to marshall message %+v: %s", m, err.Error())
 	}
 
 	for _, counter := range c.Counters {
@@ -191,7 +190,7 @@ func (c *Coordinator) abort(m *Message) {
 			}
 		}(resp)
 		if err != nil {
-			log.Printf("[ERROR] Unable to abort %s: %s", counter.Addr, err.Error())
+			l.Printf("[ERROR] Unable to abort %s: %s", counter.Addr, err.Error())
 			return
 		}
 	}
@@ -202,7 +201,7 @@ func (c *Coordinator) abort(m *Message) {
 func (c *Coordinator) commit(m *Message) {
 	payload, err := json.Marshal(m)
 	if err != nil {
-		log.Printf("[ERROR] Unable to marshall message %+v: %s", m, err.Error())
+		l.Printf("[ERROR] Unable to marshall message %+v: %s", m, err.Error())
 	}
 
 	for _, counter := range c.Counters {
@@ -214,7 +213,7 @@ func (c *Coordinator) commit(m *Message) {
 			}
 		}(resp)
 		if err != nil {
-			log.Printf("[ERROR] Unable to commit %s: %s", counter.Addr, err.Error())
+			l.Printf("[ERROR] Unable to commit %s: %s", counter.Addr, err.Error())
 			return
 		}
 		counter.HasItems = true

@@ -9,9 +9,9 @@ import (
 	"time"
 )
 
-func main() {
-	l := log.New(os.Stdout, "counter-", log.LstdFlags)
+var l = log.New(os.Stdout, "counter-", log.LstdFlags)
 
+func main() {
 	me, err := os.Hostname()
 	if err != nil {
 		l.Fatal("[ERROR] Cannot obtain hostname:", err.Error())
@@ -25,12 +25,12 @@ func main() {
 	c := NewCounter(me, items)
 
 	sm := http.NewServeMux()
-	sm.Handle("/items/", NewCountItems(l, c))
-	sm.Handle("/items", NewItemsGet(l, c))
-	sm.Handle("/init", NewInit(l, c))
-	sm.Handle("/abort", NewAbort(l, c))
-	sm.Handle("/commit", NewCommit(l, c))
-	sm.Handle("/health", NewHealthCheck(l, c))
+	sm.Handle("/items/", NewCountItems(c))
+	sm.Handle("/items", NewItemsGet(c))
+	sm.Handle("/init", NewInit(c))
+	sm.Handle("/abort", NewAbort(c))
+	sm.Handle("/commit", NewCommit(c))
+	sm.Handle("/health", NewHealthCheck(c))
 
 	s := &http.Server{
 		Addr:         ":80",

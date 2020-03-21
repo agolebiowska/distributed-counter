@@ -5,75 +5,69 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"regexp"
 	"time"
 )
 
 type ItemsCount struct {
-	log         *log.Logger
 	coordinator *Coordinator
 }
 
 type ItemsAdd struct {
-	log         *log.Logger
 	coordinator *Coordinator
 }
 
 type CounterAdd struct {
-	log         *log.Logger
 	coordinator *Coordinator
 }
 
-type HealthCheck struct {
-	log *log.Logger
-}
+type HealthCheck struct{}
 
 type Status struct {
 	Message string `json:"message"`
 }
 
-func NewItemsCount(l *log.Logger, c *Coordinator) *ItemsCount {
-	return &ItemsCount{l, c}
+func NewItemsCount(c *Coordinator) *ItemsCount {
+	return &ItemsCount{c}
 }
 
-func NewItemsAdd(l *log.Logger, c *Coordinator) *ItemsAdd {
-	return &ItemsAdd{l, c}
+func NewItemsAdd(c *Coordinator) *ItemsAdd {
+	return &ItemsAdd{c}
 }
 
-func NewCounterAdd(l *log.Logger, c *Coordinator) *CounterAdd {
-	return &CounterAdd{l, c}
+func NewCounterAdd(c *Coordinator) *CounterAdd {
+	return &CounterAdd{c}
 }
 
-func NewHealthCheck(l *log.Logger) *HealthCheck {
-	return &HealthCheck{l}
+func NewHealthCheck() *HealthCheck {
+	return &HealthCheck{}
 }
 
 func (h *ItemsCount) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
-		h.log.Println("[INFO] Handle", r.Method, r.URL)
+		l.Println("[INFO] Handle", r.Method, r.URL)
 		rw.Header().Set("Content-Type", "application/json")
 
 		// expect the tenant identifier in the URI
 		reg := regexp.MustCompile(`\/items\/(.*)\/count`)
 		g := reg.FindAllStringSubmatch(r.URL.Path, -1)
 		if len(g) != 1 || len(g[0]) != 2 {
-			h.log.Println("[ERROR] Invalid URI:", r.URL.Path)
+			l.Println("[ERROR] Invalid URI:", r.URL.Path)
 			http.Error(rw, "Invalid URI", http.StatusBadRequest)
 			return
 		}
 
 		count, err := h.coordinator.getItemsCountPerTenant(g[0][1])
 		if err != nil {
-			h.log.Println("[ERROR] Unable to get count:", err.Error())
+			l.Println("[ERROR] Unable to get count:", err.Error())
 			http.Error(rw, "Unable to get count", http.StatusInternalServerError)
 			return
 		}
 
 		if err := json.NewEncoder(rw).Encode(count); err != nil {
-			h.log.Println("[ERROR] Unable to marshall json:", err)
+			l.Println("[ERROR] Unable to marshall json:", err)
 			http.Error(rw, "Unable to marshall json", http.StatusInternalServerError)
 			return
 		}
@@ -86,18 +80,18 @@ func (h *ItemsCount) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 func (h *ItemsAdd) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodPost:
-		h.log.Println("[INFO] Handle", r.Method, r.URL)
+		l.Println("[INFO] Handle", r.Method, r.URL)
 		rw.Header().Set("Content-Type", "application/json")
 
 		items := Items{}
 		if err := json.NewDecoder(r.Body).Decode(&items); err != nil {
-			h.log.Println("[ERROR] Unable to unmarshal json:", err)
+			l.Println("[ERROR] Unable to unmarshal json:", err)
 			http.Error(rw, "Unable to unmarshal json", http.StatusBadRequest)
 			return
 		}
 
 		if err := items.Validate(); err != nil {
-			h.log.Println("[ERROR] Validation error", err)
+			l.Println("[ERROR] Validation error", err)
 			http.Error(rw, fmt.Sprintf("Validation error: %s", err), http.StatusBadRequest)
 			return
 		}
@@ -121,11 +115,11 @@ func (h *ItemsAdd) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 func (h *CounterAdd) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodPost:
-		h.log.Println("[INFO] Handle", r.Method, r.URL)
+		l.Println("[INFO] Handle", r.Method, r.URL)
 
 		body, err := ioutil.ReadAll(r.Body)
 		if err != nil {
-			h.log.Println("[ERROR] Unable to read body:", err.Error())
+			l.Println("[ERROR] Unable to read body:", err.Error())
 			http.Error(rw, fmt.Sprintf("Unable to read body: %s", err), http.StatusBadRequest)
 			return
 		}
@@ -133,10 +127,10 @@ func (h *CounterAdd) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 		items := h.coordinator.getItems()
 		counterAddr := string(body)
 		h.coordinator.acceptNewCounter(counterAddr)
-		h.log.Println("[INFO] New counter accepted:", counterAddr)
+		l.Println("[INFO] New counter accepted:", counterAddr)
 
 		if err := json.NewEncoder(rw).Encode(items); err != nil {
-			h.log.Println("[ERROR] Unable to marshal json:", err)
+			l.Println("[ERROR] Unable to marshal json:", err)
 			http.Error(rw, "Unable to marshall json", http.StatusInternalServerError)
 			return
 		}
@@ -159,5 +153,5 @@ func Do(method string, url string, body io.Reader) (*http.Response, error) {
 }
 
 func (h *HealthCheck) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
-	h.log.Println("[INFO] Health check")
+	l.Println("[INFO] Health check")
 }

@@ -5,14 +5,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net/http"
 )
 
 var coordinatorAddr = "http://coordinator"
 
 type Counter struct {
-	log      *log.Logger
 	Me       string
 	Items    Items
 	Messages Messages
@@ -91,24 +89,24 @@ func SignIn(me string) (Items, error) {
 		}
 	}(resp)
 	if err != nil {
-		log.Printf("[ERROR] Add counter error: %s", err.Error())
+		l.Printf("[ERROR] Add counter error: %s", err.Error())
 		return Items{}, err
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		log.Printf("[ERROR] Unexpected status code %d for add counter: %s", resp.StatusCode, err)
+		l.Printf("[ERROR] Unexpected status code %d for add counter: %s", resp.StatusCode, err)
 		return Items{}, err
 	}
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		log.Printf("[ERROR] Cannot read from add counter: %s", err.Error())
+		l.Printf("[ERROR] Cannot read from add counter: %s", err.Error())
 		return Items{}, err
 	}
 
 	items := Items{}
 	if err := json.Unmarshal(body, &items); err != nil {
-		log.Printf("[ERROR] Cannot unmarshall json: %s", body)
+		l.Printf("[ERROR] Cannot unmarshall json: %s", body)
 		return Items{}, err
 	}
 

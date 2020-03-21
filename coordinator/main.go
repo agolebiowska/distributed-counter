@@ -10,15 +10,16 @@ import (
 	"time"
 )
 
+var l = log.New(os.Stdout, "coordinator-", log.LstdFlags)
+
 func main() {
-	l := log.New(os.Stdout, "coordinator-", log.LstdFlags)
 	c := NewCoordinator()
 
 	sm := http.NewServeMux()
-	sm.Handle("/items/", NewItemsCount(l, c))
-	sm.Handle("/items", NewItemsAdd(l, c))
-	sm.Handle("/counters", NewCounterAdd(l, c))
-	sm.Handle("/health", NewHealthCheck(l))
+	sm.Handle("/items/", NewItemsCount(c))
+	sm.Handle("/items", NewItemsAdd(c))
+	sm.Handle("/counters", NewCounterAdd(c))
+	sm.Handle("/health", NewHealthCheck())
 
 	s := &http.Server{
 		Addr:         ":80",
@@ -30,20 +31,7 @@ func main() {
 
 	go func() {
 		for {
-			for range time.Tick(30 * time.Second) {
-				for i, counter := range c.Counters {
-					url := fmt.Sprintf("http://%s/health", counter.Addr)
-					resp, err := Do(http.MethodGet, url, nil)
-					if err != nil {
-						l.Printf("[INFO] Health check failed: %s", err.Error())
-
-					}
-					if resp.StatusCode != 200 {
-						c.Counters = append(c.Counters[:i], c.Counters[i+1:]...)
-						l.Printf("[INFO] Removed %s from counters", counter.Addr)
-					}
-				}
-			}
+			check(c.Counters)
 		}
 	}()
 
@@ -63,4 +51,21 @@ func main() {
 
 	tc, _ := context.WithTimeout(context.Background(), 30*time.Second)
 	s.Shutdown(tc)
+}
+
+func check(c []*Counter) {
+	for range time.Tick(30 * time.Second) {
+		for i, counter := range c {
+			url := fmt.Sprintf("http://%s/health", counter.Addr)
+			resp, err := Do(http.MethodGet, url, nil)
+			if err != nil {
+				l.Printf("[INFO] Health check failed: %s", err.Error())
+
+			}
+			if resp.StatusCode != 200 {
+				c = append(c[:i], c[i+1:]...)
+				l.Printf("[INFO] Removed %s from counters", counter.Addr)
+			}
+		}
+	}
 }
