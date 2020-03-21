@@ -1,36 +1,32 @@
 package main
 
 import (
-	"bytes"
 	"context"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
 	"time"
-
-	u "github.com/agolebiowska/distributed-counter/utils"
 )
 
 func main() {
-	l := log.New(os.Stdout, "counter", log.LstdFlags)
+	l := log.New(os.Stdout, "counter-", log.LstdFlags)
 
 	me, err := os.Hostname()
 	if err != nil {
 		l.Fatal("[ERROR] Cannot obtain hostname:", err.Error())
 	}
 
-	data := []byte(me)
-	items := Items{}
-	err = u.Do(http.MethodPost, "http://coordinator/counters", items, bytes.NewBuffer(data))
+	items, err := SignIn(me)
 	if err != nil {
-		l.Fatal("[ERROR] Cannot add counter: ", err.Error())
+		log.Fatal("[ERROR] Cannot add counter:" + err.Error())
 	}
 
 	c := NewCounter(me, items)
 
 	sm := http.NewServeMux()
-	sm.Handle("/count/", NewCountItems(l, c))
+	sm.Handle("/items/", NewCountItems(l, c))
+	sm.Handle("/items", NewItemsGet(l, c))
 	sm.Handle("/init", NewInit(l, c))
 	sm.Handle("/abort", NewAbort(l, c))
 	sm.Handle("/commit", NewCommit(l, c))

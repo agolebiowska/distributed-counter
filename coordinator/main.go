@@ -10,7 +10,7 @@ import (
 )
 
 func main() {
-	l := log.New(os.Stdout, "coordinator", log.LstdFlags)
+	l := log.New(os.Stdout, "coordinator-", log.LstdFlags)
 	c := NewCoordinator()
 
 	sm := http.NewServeMux()

@@ -1,6 +1,15 @@
 package main
 
-import "log"
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"io/ioutil"
+	"log"
+	"net/http"
+)
+
+var coordinatorAddr = "http://coordinator"
 
 type Counter struct {
 	log      *log.Logger
@@ -23,8 +32,8 @@ type Count struct {
 	Value int `json:"count"`
 }
 
-type Items []*Item
-type Messages []*Message
+type Items []Item
+type Messages []Message
 
 func NewCounter(m string, i Items) *Counter {
 	return &Counter{
@@ -34,17 +43,17 @@ func NewCounter(m string, i Items) *Counter {
 }
 
 func (c *Counter) countItemsForTenant(tenantID string) *Count {
-	count := 0
+	items := map[string]bool{}
 	for _, i := range c.Items {
 		if i.Tenant == tenantID {
-			count++
+			items[i.ID] = true
 		}
 	}
-	return &Count{count}
+	return &Count{Value: len(items)}
 }
 
 func (c *Counter) acceptMessage(m *Message) {
-	c.Messages = append(c.Messages, m)
+	c.Messages = append(c.Messages, *m)
 }
 
 func (c *Counter) abort(m *Message) {
@@ -64,4 +73,44 @@ func (c *Counter) commit(m *Message) {
 			break
 		}
 	}
+}
+
+func SignIn(me string) (Items, error) {
+	myAddr := []byte(me)
+	url := fmt.Sprintf("%s/counters", coordinatorAddr)
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(myAddr))
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	defer func(resp *http.Response) {
+		if resp != nil {
+			resp.Body.Close()
+		}
+	}(resp)
+	if err != nil {
+		log.Printf("[ERROR] Add counter error: %s", err.Error())
+		return Items{}, err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		log.Printf("[ERROR] Unexpected status code %d for add counter: %s", resp.StatusCode, err)
+		return Items{}, err
+	}
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		log.Printf("[ERROR] Cannot read from add counter: %s", err.Error())
+		return Items{}, err
+	}
+
+	items := Items{}
+	if err := json.Unmarshal(body, &items); err != nil {
+		log.Printf("[ERROR] Cannot unmarshall json: %s", body)
+		return Items{}, err
+	}
+
+	return items, nil
 }

@@ -3,7 +3,7 @@ DOCKERFILE_FILE			:= "../Dockerfile"
 DOCKERFILEDEV_FILE		:= "../Dockerfile.dev"
 
 # Builds & run a production-ready image
-.PHONY: prod
+.PHONY: all
 prod:
 	DOCKERFILE=${DOCKERFILE_FILE} docker-compose up -d --build --scale counter=3
 

@@ -1,11 +1,14 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"regexp"
+	"time"
 )
 
 type ItemsCount struct {
@@ -35,86 +38,108 @@ func NewCounterAdd(l *log.Logger, c *Coordinator) *CounterAdd {
 	return &CounterAdd{l, c}
 }
 
-func (i *ItemsCount) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
+func (h *ItemsCount) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
+		h.log.Println("[INFO] Handle", r.Method, r.URL)
+		rw.Header().Set("Content-Type", "application/json")
+
 		// expect the tenant identifier in the URI
 		reg := regexp.MustCompile(`\/items\/(.*)\/count`)
 		g := reg.FindAllStringSubmatch(r.URL.Path, -1)
 		if len(g) != 1 || len(g[0]) != 2 {
-			i.log.Println("[ERROR] Invalid URI:", r.URL.Path)
+			h.log.Println("[ERROR] Invalid URI:", r.URL.Path)
 			http.Error(rw, "Invalid URI", http.StatusBadRequest)
 			return
 		}
 
-		tenantID := g[0][1]
-		i.log.Println("[INFO] Handle GET items count per tenant:", tenantID)
-
-		count := i.coordinator.getItemsCountPerTenant(tenantID)
-		if err := json.NewEncoder(rw).Encode(&count); err != nil {
-			i.log.Println("[ERROR] Unable to marshal json:", err)
-			http.Error(rw, "Unable to marshall json", http.StatusInternalServerError)
+		count, err := h.coordinator.getItemsCountPerTenant(g[0][1])
+		if err != nil {
+			h.log.Println("[ERROR] Unable to get count:", err.Error())
+			http.Error(rw, "Unable to get count", http.StatusInternalServerError)
+			return
 		}
-		return
+
+		if err := json.NewEncoder(rw).Encode(count); err != nil {
+			h.log.Println("[ERROR] Unable to marshall json:", err)
+			http.Error(rw, "Unable to marshall json", http.StatusInternalServerError)
+			return
+		}
 
 	default:
 		rw.WriteHeader(http.StatusMethodNotAllowed)
 	}
 }
 
-func (i *ItemsAdd) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
+func (h *ItemsAdd) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodPost:
-		i.log.Println("[INFO] Handle POST items")
+		h.log.Println("[INFO] Handle", r.Method, r.URL)
+		rw.Header().Set("Content-Type", "application/json")
 
 		items := Items{}
 		if err := json.NewDecoder(r.Body).Decode(&items); err != nil {
-			i.log.Println("[ERROR] Unable to unmarshal json:", err)
+			h.log.Println("[ERROR] Unable to unmarshal json:", err)
 			http.Error(rw, "Unable to unmarshal json", http.StatusBadRequest)
 			return
 		}
 
-		m := NewMessage(items)
-		if i.coordinator.canCommit(m) == false {
-			err := i.coordinator.abort(m)
-			if err != nil {
-				i.log.Println("[ERROR] Unable to abort:", err)
-				rw.WriteHeader(http.StatusInternalServerError)
-				rw.Write([]byte("Unable to abort"))
-			}
+		if err := items.Validate(); err != nil {
+			h.log.Println("[ERROR] Validation error", err)
+			http.Error(rw, fmt.Sprintf("Validation error: %s", err), http.StatusBadRequest)
+			return
 		}
-		i.coordinator.commit(m)
-		return
+
+		m := NewMessage(items)
+		if h.coordinator.canCommit(m) == false {
+			h.coordinator.abort(m)
+
+			http.Error(rw, "Unable to add items", http.StatusInternalServerError)
+			return
+		}
+		h.coordinator.commit(m)
 
 	default:
 		rw.WriteHeader(http.StatusMethodNotAllowed)
 	}
 }
 
-func (c *CounterAdd) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
+func (h *CounterAdd) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodPost:
-		c.log.Println("[INFO] Handle POST counter")
+		h.log.Println("[INFO] Handle", r.Method, r.URL)
 
-		counterAddrByte, err := ioutil.ReadAll(r.Body)
+		body, err := ioutil.ReadAll(r.Body)
 		if err != nil {
-			c.log.Println("[ERROR] Unable to read body:", err)
-			http.Error(rw, "Unable to read body", http.StatusBadRequest)
+			h.log.Println("[ERROR] Unable to read body:", err.Error())
+			http.Error(rw, fmt.Sprintf("Unable to read body: %s", err), http.StatusBadRequest)
 			return
 		}
-		counterAddr := string(counterAddrByte)
-		items := c.coordinator.getItems()
-		c.coordinator.acceptNewCounter(counterAddr)
 
-		if err := json.NewEncoder(rw).Encode(&items); err != nil {
-			c.log.Println("[ERROR] Unable to marshal json:", err)
+		items := h.coordinator.getItems()
+		counterAddr := string(body)
+		h.coordinator.acceptNewCounter(counterAddr)
+		h.log.Println("[INFO] New counter accepted:", counterAddr)
+
+		if err := json.NewEncoder(rw).Encode(items); err != nil {
+			h.log.Println("[ERROR] Unable to marshal json:", err)
 			http.Error(rw, "Unable to marshall json", http.StatusInternalServerError)
 			return
 		}
-		c.log.Println("[INFO] New counter accepted:", counterAddr)
-		return
 
 	default:
 		rw.WriteHeader(http.StatusMethodNotAllowed)
 	}
+}
+
+func Do(method string, url string, buf *bytes.Buffer) (*http.Response, error) {
+	req, err := http.NewRequest(method, url, buf)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+	client := http.Client{Timeout: 1 * time.Second}
+	resp, err := client.Do(req)
+	return resp, err
 }
