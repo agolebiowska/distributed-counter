@@ -107,7 +107,7 @@ func (c *Coordinator) getItems() Items {
 	if body != nil {
 		err := json.Unmarshal(body, &items)
 		if err != nil {
-			log.Printf("[ERROR] Cannot unmarshal %s: ", err.Error())
+			log.Printf("[ERROR] Cannot unmarshal json: %s ", err.Error())
 		}
 	}
 
@@ -118,20 +118,19 @@ func (c *Coordinator) getItems() Items {
 // returns counted items for given tenantID
 func (c *Coordinator) getItemsCountPerTenant(tenantID string) (*Count, error) {
 	count := Count{}
-	var body []byte
+
 	url := fmt.Sprintf("http://counter/items/%s/count", tenantID)
-	req, err := http.NewRequest(http.MethodGet, url, nil)
-	if err != nil {
-		return nil, err
-	}
-	req.Header.Set("Content-Type", "application/json")
-	client := &http.Client{}
-	resp, err := client.Do(req)
+	resp, err := Do(http.MethodGet, url, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	body, err = ioutil.ReadAll(resp.Body)
+	if resp.StatusCode != http.StatusOK {
+		log.Printf("[ERROR] Unexpected status code: %d", resp.StatusCode)
+		return nil, errors.New("unexpected status code")
+	}
+
+	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		log.Printf("[ERROR] Cannot read response body: %s", err.Error())
 		return nil, err
@@ -139,7 +138,7 @@ func (c *Coordinator) getItemsCountPerTenant(tenantID string) (*Count, error) {
 
 	err = json.Unmarshal(body, &count)
 	if err != nil {
-		log.Printf("[ERROR] Cannot unmarshal %s: ", err.Error())
+		log.Printf("[ERROR] Cannot unmarshal json: %s ", err.Error())
 		return nil, err
 	}
 
