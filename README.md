@@ -62,8 +62,14 @@ DEBUG_PORT=40000
 
 ### Flow
 
-Counters must make a decision if they can save the items. If one or more counters refuse all counters will receive request to forget about previous message.  
+#### Adding items
+- Coordinator sends unique message with items to all counters. 
+- Counters must make a decision if they can save items.
+- If one or more counters refuse all will receive request to forget about previous message.
+<img align="right" alt="gopher" align="center" src="https://raw.githubusercontent.com/agolebiowska/distributed-counter/master/.img/1.png" width="45%">
+<img align="right" alt="gopher" align="center" src="https://raw.githubusercontent.com/agolebiowska/distributed-counter/master/.img/2.png" width="45%">
+ 
 
 ### Possible improvements
 - RPC or sockets could be used instead of HTTP for communication between coordinator and counters.
-- Different distributed algorithm like paxos or raft could be implemented for our system to be fully partition tolerant.
+- Different distributed algorithm like paxos or raft could be implemented for our system to be partition tolerant.
