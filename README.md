@@ -61,14 +61,21 @@ DEBUG_PORT=40000
 - `N` number of counters which can be called only from coordinator itself.
 
 ### Flow
+#### Add counter
+- When a new counter instance is added it sends request to coordinator to obtain data from other counters.
+<img align="center" alt="gopher" align="center" src="https://raw.githubusercontent.com/agolebiowska/distributed-counter/master/.img/3.png" width="45%">
 
-#### Adding items
-- Coordinator sends unique message with items to all counters. 
+#### Add items
+- Coordinator sends unique message to all counters.
 - Counters must make a decision if they can save items.
 - If one or more counters refuse all will receive request to forget about previous message.
-<img align="right" alt="gopher" align="center" src="https://raw.githubusercontent.com/agolebiowska/distributed-counter/master/.img/1.png" width="45%">
-<img align="right" alt="gopher" align="center" src="https://raw.githubusercontent.com/agolebiowska/distributed-counter/master/.img/2.png" width="45%">
+<img align="center" alt="gopher" align="center" src="https://raw.githubusercontent.com/agolebiowska/distributed-counter/master/.img/1.png" width="45%"> 
+ <img align="center" alt="gopher" align="center" src="https://raw.githubusercontent.com/agolebiowska/distributed-counter/master/.img/2.png" width="45%">
  
+#### Get count
+- To get count coordinator sends request to one random counter.
+- Docker handles requests balancing.
+<img align="center" alt="gopher" align="center" src="https://raw.githubusercontent.com/agolebiowska/distributed-counter/master/.img/4.png" width="45%">
 
 ### Possible improvements
 - RPC or sockets could be used instead of HTTP for communication between coordinator and counters.
