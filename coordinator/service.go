@@ -9,17 +9,20 @@ import (
 	"io/ioutil"
 	"math/rand"
 	"net/http"
+	"sync"
 	"time"
 )
 
 type Counter struct {
-	Addr     string
-	HasItems bool
+	Addr          string
+	HasItems      bool
+	IsDead        bool
+	RecoveryTries int16
 }
 
 type Coordinator struct {
-	Counters    []*Counter
-	IsQueryAble bool
+	Counters map[string]*Counter
+	Lock     sync.RWMutex
 
 	http *http.Client
 }
@@ -53,13 +56,13 @@ func NewCounter(addr string) *Counter {
 	return &Counter{
 		Addr:     addr,
 		HasItems: false,
+		IsDead:   false,
 	}
 }
 
 func NewCoordinator() *Coordinator {
 	return &Coordinator{
-		Counters:    []*Counter{},
-		IsQueryAble: true,
+		Counters: map[string]*Counter{},
 
 		http: &http.Client{
 			Timeout: 1 * time.Second,
@@ -80,16 +83,42 @@ func uuid() string {
 	return fmt.Sprintf("%x-%x-%x-%x-%x", b[0:4], b[4:6], b[6:8], b[8:10], b[10:])
 }
 
-func (c *Coordinator) acceptNewCounter(counterAddr string) {
-	counter := NewCounter(counterAddr)
-	c.Counters = append(c.Counters, counter)
+func (c *Coordinator) acceptCounter(counterAddr string) {
+	if c.Counters[counterAddr] == nil {
+		l.Println("[INFO] New counter accepted:", counterAddr)
+	} else {
+		l.Printf("[INFO] %s has been recovered", counterAddr)
+	}
+
+	c.Lock.Lock()
+	c.Counters[counterAddr] = NewCounter(counterAddr)
+	c.Lock.Unlock()
+}
+
+func (c *Coordinator) removeCounter(counterAddr string) {
+	c.Lock.Lock()
+	delete(c.Counters, counterAddr)
+	c.Lock.Unlock()
+}
+
+func (c *Coordinator) isQueryAble() bool {
+	deadCounters := 0
+	for _, counter := range c.Counters {
+		if counter.IsDead {
+			deadCounters++
+		}
+		if deadCounters > (len(c.Counters) - (len(c.Counters) - 1)) {
+			return false
+		}
+	}
+	return true
 }
 
 func (c *Coordinator) getItems() Items {
 	items := Items{}
 	var body []byte
 	for _, counter := range c.Counters {
-		if counter.HasItems == false {
+		if counter.IsDead || !counter.HasItems {
 			continue
 		}
 
@@ -109,7 +138,6 @@ func (c *Coordinator) getItems() Items {
 			l.Printf("[ERROR] Cannot read response body from %s: %s", counter.Addr, err.Error())
 			continue
 		}
-		counter.HasItems = true
 	}
 
 	if body != nil {
