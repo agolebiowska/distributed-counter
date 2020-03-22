@@ -17,12 +17,10 @@ func main() {
 		l.Fatal("[ERROR] Cannot obtain hostname:", err.Error())
 	}
 
-	items, err := SignIn(me)
-	if err != nil {
+	c := NewCounter(me)
+	if err = c.SignIn(); err != nil {
 		log.Fatal("[ERROR] Cannot add counter:" + err.Error())
 	}
-
-	c := NewCounter(me, items)
 
 	sm := http.NewServeMux()
 	sm.Handle("/items/", NewCountItems(c))

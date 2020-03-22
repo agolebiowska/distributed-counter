@@ -4,8 +4,10 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
+	"time"
 )
 
 var coordinatorAddr = "http://coordinator"
@@ -14,6 +16,8 @@ type Counter struct {
 	Me       string
 	Items    Items
 	Messages Messages
+
+	http *http.Client
 }
 
 type Item struct {
@@ -33,10 +37,13 @@ type Count struct {
 type Items []Item
 type Messages []Message
 
-func NewCounter(m string, i Items) *Counter {
+func NewCounter(m string) *Counter {
 	return &Counter{
-		Me:    m,
-		Items: i,
+		Me: m,
+
+		http: &http.Client{
+			Timeout: 1 * time.Second,
+		},
 	}
 }
 
@@ -73,16 +80,10 @@ func (c *Counter) commit(m *Message) {
 	}
 }
 
-func SignIn(me string) (Items, error) {
-	myAddr := []byte(me)
+func (c *Counter) SignIn() error {
+	myAddr := []byte(c.Me)
 	url := fmt.Sprintf("%s/counters", coordinatorAddr)
-	req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(myAddr))
-	if err != nil {
-		return nil, err
-	}
-	req.Header.Set("Content-Type", "application/json")
-	client := &http.Client{}
-	resp, err := client.Do(req)
+	resp, err := c.Do(http.MethodPost, url, bytes.NewBuffer(myAddr))
 	defer func(resp *http.Response) {
 		if resp != nil {
 			resp.Body.Close()
@@ -90,25 +91,37 @@ func SignIn(me string) (Items, error) {
 	}(resp)
 	if err != nil {
 		l.Printf("[ERROR] Add counter error: %s", err.Error())
-		return Items{}, err
+		return err
 	}
 
 	if resp.StatusCode != http.StatusOK {
 		l.Printf("[ERROR] Unexpected status code %d for add counter: %s", resp.StatusCode, err)
-		return Items{}, err
+		return err
 	}
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		l.Printf("[ERROR] Cannot read from add counter: %s", err.Error())
-		return Items{}, err
+		return err
 	}
 
 	items := Items{}
 	if err := json.Unmarshal(body, &items); err != nil {
 		l.Printf("[ERROR] Cannot unmarshall json: %s", body)
-		return Items{}, err
+		return err
+	}
+	c.Items = items
+
+	return nil
+}
+
+func (c *Counter) Do(method string, url string, body io.Reader) (*http.Response, error) {
+	req, err := http.NewRequest(method, url, body)
+	if err != nil {
+		return nil, err
 	}
 
-	return items, nil
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := c.http.Do(req)
+	return resp, err
 }
