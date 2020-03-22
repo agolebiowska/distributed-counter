@@ -69,8 +69,7 @@ The requirements are focused mostly on data consistency and handling child node 
 - `CP` cannot be fully achieved with only one callable main coordinator. Mechanism to choosing one of the counters as master after coordinator failure would be something worth consideration.
 - `CA` and Two-Phase commit protocol approach is something I choose for this system. 
 
-####Disadvantages
-
+**Disadvantages**
 - Request is synchronous (blocking).
 - Possibility of deadlock between transactions.
 - It is not partition tolerant.
