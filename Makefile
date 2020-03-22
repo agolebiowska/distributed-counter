@@ -10,7 +10,14 @@ prod:
 # Builds & run a development-ready image
 .PHONY: dev
 dev:
-	DOCKERFILE=${DOCKERFILEDEV_FILE} docker-compose up -d --build
+	DOCKERFILE=${DOCKERFILEDEV_FILE} docker-compose up -d --scale counter=3
+
+# Run tests inside containers
+.PHONY: test
+test:
+	make dev
+	docker-compose exec coordinator sh -c "cd src/coordinator && go test ./... -count=1"
+	docker-compose exec counter sh -c "cd src/counter && go test ./... -count=1"
 
 # Removes all containers and all volumes
 .PHONY: build-rm-containers

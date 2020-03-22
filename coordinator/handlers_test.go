@@ -181,11 +181,7 @@ func initError(p string) *http.Response {
 			Header:     make(http.Header),
 		}
 	default:
-		return &http.Response{
-			StatusCode: 500,
-			Body:       ioutil.NopCloser(bytes.NewBufferString(`KO`)),
-			Header:     make(http.Header),
-		}
+		return resp(500)
 	}
 }
 
