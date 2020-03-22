@@ -9,20 +9,16 @@ import (
 	"io/ioutil"
 	"math/rand"
 	"net/http"
-	"sync"
 	"time"
 )
 
 type Counter struct {
-	Addr          string
-	HasItems      bool
-	IsDead        bool
-	RecoveryTries int16
+	Addr     string
+	HasItems bool
 }
 
 type Coordinator struct {
-	Counters map[string]*Counter
-	Lock     sync.RWMutex
+	Counters []*Counter
 
 	http *http.Client
 }
@@ -56,13 +52,12 @@ func NewCounter(addr string) *Counter {
 	return &Counter{
 		Addr:     addr,
 		HasItems: false,
-		IsDead:   false,
 	}
 }
 
 func NewCoordinator() *Coordinator {
 	return &Coordinator{
-		Counters: map[string]*Counter{},
+		Counters: []*Counter{},
 
 		http: &http.Client{
 			Timeout: 1 * time.Second,
@@ -83,42 +78,18 @@ func uuid() string {
 	return fmt.Sprintf("%x-%x-%x-%x-%x", b[0:4], b[4:6], b[6:8], b[8:10], b[10:])
 }
 
-func (c *Coordinator) acceptCounter(counterAddr string) {
-	if c.Counters[counterAddr] == nil {
-		l.Println("[INFO] New counter accepted:", counterAddr)
-	} else {
-		l.Printf("[INFO] %s has been recovered", counterAddr)
-	}
-
-	c.Lock.Lock()
-	c.Counters[counterAddr] = NewCounter(counterAddr)
-	c.Lock.Unlock()
+func (c *Coordinator) acceptNewCounter(counterAddr string) {
+	counter := NewCounter(counterAddr)
+	c.Counters = append(c.Counters, counter)
 }
 
-func (c *Coordinator) removeCounter(counterAddr string) {
-	c.Lock.Lock()
-	delete(c.Counters, counterAddr)
-	c.Lock.Unlock()
-}
-
-func (c *Coordinator) isQueryAble() bool {
-	deadCounters := 0
-	for _, counter := range c.Counters {
-		if counter.IsDead {
-			deadCounters++
-		}
-		if deadCounters > (len(c.Counters) - (len(c.Counters) - 1)) {
-			return false
-		}
-	}
-	return true
-}
-
+// sends GET request to alive and populated counter
+// returns all items
 func (c *Coordinator) getItems() Items {
 	items := Items{}
 	var body []byte
 	for _, counter := range c.Counters {
-		if counter.IsDead || !counter.HasItems {
+		if counter.HasItems == false {
 			continue
 		}
 

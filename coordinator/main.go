@@ -39,18 +39,12 @@ func main() {
 	go func() {
 		for {
 			for range time.Tick(10 * time.Second) {
-				for addr, counter := range c.Counters {
+				for i, counter := range c.Counters {
 					url := fmt.Sprintf("http://%s/health", counter.Addr)
 					resp, err := c.Do(http.MethodGet, url, nil)
 					if err != nil || resp.StatusCode != 200 {
-						if c.Counters[addr].RecoveryTries >= 5 {
-							c.removeCounter(addr)
-							l.Printf("[INFO] %s removed", counter.Addr)
-							continue
-						}
-						l.Printf("[INFO] %s not responding", counter.Addr)
-						c.Counters[addr].IsDead = true
-						c.Counters[addr].RecoveryTries++
+						c.Counters = append(c.Counters[:i], c.Counters[i+1:]...)
+						l.Printf("[INFO] %s removed", counter.Addr)
 					}
 				}
 			}

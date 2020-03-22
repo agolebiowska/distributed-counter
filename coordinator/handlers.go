@@ -48,12 +48,6 @@ func (h *ItemsCount) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 		l.Println("[INFO] Handle", r.Method, r.URL)
 		rw.Header().Set("Content-Type", "application/json")
 
-		if h.coordinator.isQueryAble() == false {
-			l.Println("[ERROR] Not query able, waiting for counters")
-			http.Error(rw, "Not query able", http.StatusInternalServerError)
-			return
-		}
-
 		// expect the tenant identifier in the URI
 		reg := regexp.MustCompile(`\/items\/(.*)\/count`)
 		g := reg.FindAllStringSubmatch(r.URL.Path, -1)
@@ -86,12 +80,6 @@ func (h *ItemsAdd) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 	case http.MethodPost:
 		l.Println("[INFO] Handle", r.Method, r.URL)
 		rw.Header().Set("Content-Type", "application/json")
-
-		if h.coordinator.isQueryAble() == false {
-			l.Println("[ERROR] Not query able, waiting for counters")
-			http.Error(rw, "Not query able", http.StatusInternalServerError)
-			return
-		}
 
 		items := Items{}
 		if err := json.NewDecoder(r.Body).Decode(&items); err != nil {
@@ -136,7 +124,8 @@ func (h *CounterAdd) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 
 		items := h.coordinator.getItems()
 		counterAddr := string(body)
-		h.coordinator.acceptCounter(counterAddr)
+		h.coordinator.acceptNewCounter(counterAddr)
+		l.Println("[INFO] New counter accepted:", counterAddr)
 
 		if err := json.NewEncoder(rw).Encode(items); err != nil {
 			l.Println("[ERROR] Unable to marshal json:", err)
