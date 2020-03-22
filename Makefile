@@ -33,3 +33,29 @@ stop:
 # Clean everything
 .PHONY: clean
 clean: stop build-rm-containers
+
+.PHONY: log
+log:
+	docker-compose logs coordinator counter
+
+# Run simulation
+.PHONY: simulate
+simulate:
+	make clean dev
+	# 1. counters should be added and items should be empty
+	sleep 10s && docker logs coordinator && curl localhost:8080/items/test/count
+	# 2. item should be added
+	curl localhost:8080/items -d '[{"id":"item1","tenant":"test"}]' && curl localhost:8080/items/test/count
+	# 3. first counter should not respond
+	docker stop distributed-counter_counter_1 && sleep 10s && docker logs coordinator
+	# 4. first counter should be recovered
+	docker start distributed-counter_counter_1 && sleep 10s && docker logs coordinator
+	# 5. second and third counter should be marked as not query able
+	docker stop distributed-counter_counter_2 distributed-counter_counter_3 && sleep 10s && docker logs coordinator
+	# 6. more items should be added
+	curl localhost:8080/items -d '[{"id":"item2","tenant":"test"}, {"id":"item3","tenant":"test"}]'
+	curl localhost:8080/items/test/count
+	# 7. new counters should be added and should imediately have valid items
+	docker start distributed-counter_counter_2 distributed-counter_counter_3
+	docker-compose exec coordinator sh -c "curl distributed-counter_counter_1/items/test/count && curl distributed-counter_counter_2/items/test/count && curl distributed-counter_counter_3/items/test/count"
+	make clean

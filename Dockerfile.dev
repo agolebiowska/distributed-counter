@@ -18,6 +18,8 @@ RUN go get github.com/go-delve/delve/cmd/dlv
 # to be able to run go test ./... in the container
 FROM golang:alpine
 
+RUN apk add curl
+
 # Allow delve to run on Alpine based containers.
 RUN apk add --no-cache libc6-compat build-base
 

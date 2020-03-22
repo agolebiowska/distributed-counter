@@ -13,8 +13,10 @@ import (
 )
 
 type Counter struct {
-	Addr     string
-	HasItems bool
+	Addr          string
+	HasItems      bool
+	IsDead        bool
+	RecoveryTries int16
 }
 
 type Coordinator struct {
@@ -52,6 +54,7 @@ func NewCounter(addr string) *Counter {
 	return &Counter{
 		Addr:     addr,
 		HasItems: false,
+		IsDead:   false,
 	}
 }
 
@@ -89,7 +92,7 @@ func (c *Coordinator) getItems() Items {
 	items := Items{}
 	var body []byte
 	for _, counter := range c.Counters {
-		if counter.HasItems == false {
+		if counter.IsDead || counter.HasItems == false {
 			continue
 		}
 
@@ -160,8 +163,13 @@ func (c *Coordinator) canCommit(m *Message) bool {
 		l.Printf("[ERROR] Unable to marshall message %+v: %s", m, err.Error())
 	}
 
+	checked := 0
 	agrees := make([]bool, 0)
 	for _, counter := range c.Counters {
+		if counter.IsDead {
+			continue
+		}
+
 		url := fmt.Sprintf("http://%s/init", counter.Addr)
 		resp, err := c.Do(http.MethodPost, url, bytes.NewBuffer(payload))
 		defer func(resp *http.Response) {
@@ -176,9 +184,10 @@ func (c *Coordinator) canCommit(m *Message) bool {
 		if resp.StatusCode == http.StatusOK {
 			agrees = append(agrees, true)
 		}
+		checked++
 	}
 
-	return len(agrees) == len(c.Counters)
+	return len(agrees) == checked
 }
 
 // sends POST request to every counter
@@ -190,6 +199,10 @@ func (c *Coordinator) abort(m *Message) {
 	}
 
 	for _, counter := range c.Counters {
+		if counter.IsDead {
+			continue
+		}
+
 		url := fmt.Sprintf("http://%s/abort", counter.Addr)
 		resp, err := c.Do(http.MethodPost, url, bytes.NewBuffer(payload))
 		defer func(resp *http.Response) {
@@ -213,6 +226,10 @@ func (c *Coordinator) commit(m *Message) {
 	}
 
 	for _, counter := range c.Counters {
+		if counter.IsDead {
+			continue
+		}
+
 		url := fmt.Sprintf("http://%s/commit", counter.Addr)
 		resp, err := c.Do(http.MethodPost, url, bytes.NewBuffer(payload))
 		defer func(resp *http.Response) {

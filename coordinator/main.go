@@ -43,8 +43,14 @@ func main() {
 					url := fmt.Sprintf("http://%s/health", counter.Addr)
 					resp, err := c.Do(http.MethodGet, url, nil)
 					if err != nil || resp.StatusCode != 200 {
-						c.Counters = append(c.Counters[:i], c.Counters[i+1:]...)
-						l.Printf("[INFO] %s removed", counter.Addr)
+						if c.Counters[i].RecoveryTries >= 5 {
+							c.Counters = append(c.Counters[:i], c.Counters[i+1:]...)
+							l.Printf("[INFO] %s removed", counter.Addr)
+							continue
+						}
+						c.Counters[i].IsDead = true
+						c.Counters[i].RecoveryTries++
+						l.Printf("[INFO] %s not query able", counter.Addr)
 					}
 				}
 			}
