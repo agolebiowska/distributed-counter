@@ -115,10 +115,8 @@ func TestItemsAdd_ServeHTTP(t *testing.T) {
 			rr := httptest.NewRecorder()
 
 			c := &Coordinator{
-				Counters:    tc.counters,
-				IsQueryAble: true,
-
-				http: client,
+				Counters: tc.counters,
+				http:     client,
 			}
 			NewItemsAdd(c).ServeHTTP(rr, request)
 

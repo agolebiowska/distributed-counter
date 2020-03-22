@@ -14,14 +14,9 @@ RUN apk add --no-cache git
 RUN go get github.com/go-delve/delve/cmd/dlv
 
 ## Second stage
-# in Dockerfile.dev keep the golang:alpine img
+# in Dockerfile.dev keep the golang
 # to be able to run go test ./... in the container
-FROM golang:alpine
-
-RUN apk add curl
-
-# Allow delve to run on Alpine based containers.
-RUN apk add --no-cache libc6-compat build-base
+FROM golang
 
 COPY --from=builder /src/server /
 COPY --from=builder /go/bin/dlv /
