@@ -114,6 +114,8 @@ func (c *Coordinator) isQueryAble() bool {
 	return true
 }
 
+// sends GET request to alive and populated counter
+// returns all items
 func (c *Coordinator) getItems() Items {
 	items := Items{}
 	var body []byte
