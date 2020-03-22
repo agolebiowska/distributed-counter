@@ -42,7 +42,7 @@ Run simulation
 $ make simulate 
 ``` 
 
-You can copy example config file to .env and change config
+You can copy example config file to .env and change values 
 ```shell
 $ cp .env.dist .env
 ``` 
