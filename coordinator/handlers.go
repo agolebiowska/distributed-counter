@@ -3,11 +3,9 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"net/http"
 	"regexp"
-	"time"
 )
 
 type ItemsCount struct {
@@ -50,6 +48,12 @@ func (h *ItemsCount) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 		l.Println("[INFO] Handle", r.Method, r.URL)
 		rw.Header().Set("Content-Type", "application/json")
 
+		//if h.coordinator.IsQueryAble == false {
+		//	l.Println("[ERROR] Not query able, waiting for counters")
+		//	http.Error(rw, "Not query able", http.StatusInternalServerError)
+		//	return
+		//}
+
 		// expect the tenant identifier in the URI
 		reg := regexp.MustCompile(`\/items\/(.*)\/count`)
 		g := reg.FindAllStringSubmatch(r.URL.Path, -1)
@@ -82,6 +86,12 @@ func (h *ItemsAdd) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 	case http.MethodPost:
 		l.Println("[INFO] Handle", r.Method, r.URL)
 		rw.Header().Set("Content-Type", "application/json")
+
+		//if h.coordinator.IsQueryAble == false {
+		//	l.Println("[ERROR] Not query able, waiting for counters")
+		//	http.Error(rw, "Not query able", http.StatusInternalServerError)
+		//	return
+		//}
 
 		items := Items{}
 		if err := json.NewDecoder(r.Body).Decode(&items); err != nil {
@@ -138,18 +148,6 @@ func (h *CounterAdd) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 	default:
 		rw.WriteHeader(http.StatusMethodNotAllowed)
 	}
-}
-
-func Do(method string, url string, body io.Reader) (*http.Response, error) {
-	req, err := http.NewRequest(method, url, body)
-	if err != nil {
-		return nil, err
-	}
-
-	req.Header.Set("Content-Type", "application/json")
-	client := http.Client{Timeout: 1 * time.Second}
-	resp, err := client.Do(req)
-	return resp, err
 }
 
 func (h *HealthCheck) ServeHTTP(rw http.ResponseWriter, r *http.Request) {

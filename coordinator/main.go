@@ -29,12 +29,25 @@ func main() {
 		WriteTimeout: 1 * time.Second,
 	}
 
-	go check(c.Counters)
-
 	go func() {
 		err := s.ListenAndServe()
 		if err != nil {
 			l.Fatal(err)
+		}
+	}()
+
+	go func() {
+		for {
+			for range time.Tick(10 * time.Second) {
+				for i, counter := range c.Counters {
+					url := fmt.Sprintf("http://%s/health", counter.Addr)
+					resp, err := c.Do(http.MethodGet, url, nil)
+					if err != nil || resp.StatusCode != 200 {
+						c.Counters = append(c.Counters[:i], c.Counters[i+1:]...)
+						l.Printf("[INFO] %s removed", counter.Addr)
+					}
+				}
+			}
 		}
 	}()
 
@@ -47,23 +60,4 @@ func main() {
 
 	tc, _ := context.WithTimeout(context.Background(), 30*time.Second)
 	s.Shutdown(tc)
-}
-
-func check(c []*Counter) {
-	for {
-		for range time.Tick(30 * time.Second) {
-			for i, counter := range c {
-				url := fmt.Sprintf("http://%s/health", counter.Addr)
-				resp, err := Do(http.MethodGet, url, nil)
-				if err != nil {
-					l.Printf("[INFO] Health check failed: %s", err.Error())
-
-				}
-				if resp.StatusCode != 200 {
-					c = append(c[:i], c[i+1:]...)
-					l.Printf("[INFO] Removed %s from counters", counter.Addr)
-				}
-			}
-		}
-	}
 }

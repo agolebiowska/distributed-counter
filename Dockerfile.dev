@@ -1,7 +1,6 @@
 ## First stage
 FROM golang:alpine AS builder
 
-ENV GO111MODULE=on
 ENV CGO_ENABLED 0
 
 WORKDIR /src

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"math/rand"
 	"net/http"
@@ -17,7 +18,10 @@ type Counter struct {
 }
 
 type Coordinator struct {
-	Counters []*Counter
+	Counters    []*Counter
+	IsQueryAble bool
+
+	http *http.Client
 }
 
 type Item struct {
@@ -54,7 +58,12 @@ func NewCounter(addr string) *Counter {
 
 func NewCoordinator() *Coordinator {
 	return &Coordinator{
-		Counters: []*Counter{},
+		Counters:    []*Counter{},
+		IsQueryAble: true,
+
+		http: &http.Client{
+			Timeout: 1 * time.Second,
+		},
 	}
 }
 
@@ -84,7 +93,7 @@ func (c *Coordinator) getItems() Items {
 			continue
 		}
 
-		resp, err := Do(http.MethodGet, fmt.Sprintf("http://%s/items", counter.Addr), nil)
+		resp, err := c.Do(http.MethodGet, fmt.Sprintf("http://%s/items", counter.Addr), nil)
 		if err != nil {
 			l.Printf("[ERROR] Cannot get items from counter %s: %s", counter.Addr, err.Error())
 			continue
@@ -119,7 +128,7 @@ func (c *Coordinator) getItemsCountPerTenant(tenantID string) (*Count, error) {
 	count := Count{}
 
 	url := fmt.Sprintf("http://counter/items/%s/count", tenantID)
-	resp, err := Do(http.MethodGet, url, nil)
+	resp, err := c.Do(http.MethodGet, url, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -155,7 +164,7 @@ func (c *Coordinator) canCommit(m *Message) bool {
 	agrees := make([]bool, 0)
 	for _, counter := range c.Counters {
 		url := fmt.Sprintf("http://%s/init", counter.Addr)
-		resp, err := Do(http.MethodPost, url, bytes.NewBuffer(payload))
+		resp, err := c.Do(http.MethodPost, url, bytes.NewBuffer(payload))
 		defer func(resp *http.Response) {
 			if resp != nil {
 				resp.Body.Close()
@@ -183,7 +192,7 @@ func (c *Coordinator) abort(m *Message) {
 
 	for _, counter := range c.Counters {
 		url := fmt.Sprintf("http://%s/abort", counter.Addr)
-		resp, err := Do(http.MethodPost, url, bytes.NewBuffer(payload))
+		resp, err := c.Do(http.MethodPost, url, bytes.NewBuffer(payload))
 		defer func(resp *http.Response) {
 			if resp != nil {
 				resp.Body.Close()
@@ -206,7 +215,7 @@ func (c *Coordinator) commit(m *Message) {
 
 	for _, counter := range c.Counters {
 		url := fmt.Sprintf("http://%s/commit", counter.Addr)
-		resp, err := Do(http.MethodPost, url, bytes.NewBuffer(payload))
+		resp, err := c.Do(http.MethodPost, url, bytes.NewBuffer(payload))
 		defer func(resp *http.Response) {
 			if resp != nil {
 				resp.Body.Close()
@@ -218,4 +227,15 @@ func (c *Coordinator) commit(m *Message) {
 		}
 		counter.HasItems = true
 	}
+}
+
+func (c *Coordinator) Do(method string, url string, body io.Reader) (*http.Response, error) {
+	req, err := http.NewRequest(method, url, body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := c.http.Do(req)
+	return resp, err
 }
