@@ -55,6 +55,7 @@ func main() {
 					}
 					if c.Counters[i].IsDead {
 						c.Counters[i].IsDead = false
+						c.Counters[i].RecoveryTries = 0
 					}
 				}
 			}
