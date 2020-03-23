@@ -62,7 +62,7 @@ DEBUG_PORT=40000
 
 ### Overview 
 
-The requirements are focused mostly on data consistency and handling child node failures.
+The requirements are focused mostly on data consistency and handling child node failures.  
 I decided to choose one matching scenario described in the given article (http://book.mixu.net/distsys/abstractions.html).
 <img align="right" alt="gopher" align="center" src="http://book.mixu.net/distsys/images/CAP.png" width="20%">
 
