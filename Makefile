@@ -1,7 +1,7 @@
-COUNTERS			:= 3
-DOCKER_COMPOSE_FILE	:= "docker-compose.yml"
-DOCKERFILE_FILE		:= "../Dockerfile"
-DOCKERFILEDEV_FILE	:= "../Dockerfile.dev"
+COUNTERS := 3
+DOCKER_COMPOSE_FILE := "docker-compose.yml"
+DOCKERFILE_FILE := "../Dockerfile"
+DOCKERFILEDEV_FILE := "../Dockerfile.dev"
 
 # Builds & run a production-ready image
 .PHONY: up
