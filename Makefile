@@ -43,7 +43,7 @@ log:
 # Run simulation
 .PHONY: simulate
 simulate:
-	make clean dev
+	make clean up
 	# 1. counters should be added and items should be empty
 	sleep 10s && docker logs coordinator && curl localhost:8080/items/test/count
 	# 2. item should be added

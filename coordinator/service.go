@@ -72,6 +72,8 @@ func NewMessage(items Items) *Message {
 	return &Message{ID: uuid(), Content: items}
 }
 
+// naive uuid, do not use in production
+// @todo: add uuid package
 func uuid() string {
 	b := make([]byte, 16)
 	_, err := rand.Read(b)
@@ -112,6 +114,10 @@ func (c *Coordinator) getItems() Items {
 			l.Printf("[ERROR] Cannot read response body from %s: %s", counter.Addr, err.Error())
 			continue
 		}
+
+		if resp != nil {
+			resp.Body.Close()
+		}
 	}
 
 	if body != nil {
@@ -134,6 +140,11 @@ func (c *Coordinator) getItemsCountPerTenant(tenantID string) (*Count, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer func() {
+		if resp != nil {
+			resp.Body.Close()
+		}
+	}()
 
 	if resp.StatusCode != http.StatusOK {
 		l.Printf("[ERROR] Unexpected status code: %d", resp.StatusCode)
@@ -172,19 +183,19 @@ func (c *Coordinator) canCommit(m *Message) bool {
 
 		url := fmt.Sprintf("http://%s/init", counter.Addr)
 		resp, err := c.Do(http.MethodPost, url, bytes.NewBuffer(payload))
-		defer func(resp *http.Response) {
-			if resp != nil {
-				resp.Body.Close()
-			}
-		}(resp)
 		if err != nil {
 			l.Printf("[ERROR] Cannot init for %s: %s", counter.Addr, err.Error())
+			continue
 		}
 
 		if resp.StatusCode == http.StatusOK {
 			agrees = append(agrees, true)
 		}
+
 		checked++
+		if resp != nil {
+			resp.Body.Close()
+		}
 	}
 
 	return len(agrees) == checked
@@ -205,21 +216,25 @@ func (c *Coordinator) abort(m *Message) {
 
 		url := fmt.Sprintf("http://%s/abort", counter.Addr)
 		resp, err := c.Do(http.MethodPost, url, bytes.NewBuffer(payload))
-		defer func(resp *http.Response) {
-			if resp != nil {
-				resp.Body.Close()
-			}
-		}(resp)
 		if err != nil {
 			l.Printf("[ERROR] Unable to abort %s: %s", counter.Addr, err.Error())
 			return
+		}
+
+		if resp.StatusCode != http.StatusOK {
+			l.Printf("[ERROR] Unable to abort %s: %d", counter.Addr, resp.StatusCode)
+			return
+		}
+
+		if resp != nil {
+			resp.Body.Close()
 		}
 	}
 }
 
 // sends POST request to every counter
 // to save data from previously initiated message
-func (c *Coordinator) commit(m *Message) {
+func (c *Coordinator) commit(m *Message) error {
 	payload, err := json.Marshal(m)
 	if err != nil {
 		l.Printf("[ERROR] Unable to marshall message %+v: %s", m, err.Error())
@@ -232,17 +247,22 @@ func (c *Coordinator) commit(m *Message) {
 
 		url := fmt.Sprintf("http://%s/commit", counter.Addr)
 		resp, err := c.Do(http.MethodPost, url, bytes.NewBuffer(payload))
-		defer func(resp *http.Response) {
-			if resp != nil {
-				resp.Body.Close()
-			}
-		}(resp)
 		if err != nil {
 			l.Printf("[ERROR] Unable to commit %s: %s", counter.Addr, err.Error())
-			return
+			return err
 		}
+
+		if resp.StatusCode != http.StatusOK {
+			l.Printf("[ERROR] Unable to commit %s: %d", counter.Addr, resp.StatusCode)
+			return errors.New("unable to commit")
+		}
+
 		counter.HasItems = true
+		if resp != nil {
+			resp.Body.Close()
+		}
 	}
+	return nil
 }
 
 func (c *Coordinator) Do(method string, url string, body io.Reader) (*http.Response, error) {

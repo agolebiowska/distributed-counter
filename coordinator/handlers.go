@@ -42,6 +42,11 @@ func NewHealthCheck() *HealthCheck {
 	return &HealthCheck{}
 }
 
+func status(m string) string {
+	j, _ := json.Marshal(&Status{Message: m})
+	return string(j)
+}
+
 func (h *ItemsCount) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
@@ -53,20 +58,20 @@ func (h *ItemsCount) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 		g := reg.FindAllStringSubmatch(r.URL.Path, -1)
 		if len(g) != 1 || len(g[0]) != 2 {
 			l.Println("[ERROR] Invalid URI:", r.URL.Path)
-			http.Error(rw, "Invalid URI", http.StatusBadRequest)
+			http.Error(rw, status("Invalid URI"), http.StatusBadRequest)
 			return
 		}
 
 		count, err := h.coordinator.getItemsCountPerTenant(g[0][1])
 		if err != nil {
 			l.Println("[ERROR] Unable to get count:", err.Error())
-			http.Error(rw, "Unable to get count", http.StatusInternalServerError)
+			http.Error(rw, status("Unable to get count"), http.StatusInternalServerError)
 			return
 		}
 
 		if err := json.NewEncoder(rw).Encode(count); err != nil {
 			l.Println("[ERROR] Unable to marshall json:", err)
-			http.Error(rw, "Unable to marshall json", http.StatusInternalServerError)
+			http.Error(rw, status("Unable to marshall json"), http.StatusInternalServerError)
 			return
 		}
 
@@ -84,23 +89,28 @@ func (h *ItemsAdd) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 		items := Items{}
 		if err := json.NewDecoder(r.Body).Decode(&items); err != nil {
 			l.Println("[ERROR] Unable to unmarshal json:", err)
-			http.Error(rw, "Unable to unmarshal json", http.StatusBadRequest)
+			http.Error(rw, status("Unable to unmarshal json"), http.StatusBadRequest)
 			return
 		}
 
 		if err := items.Validate(); err != nil {
-			l.Println("[ERROR] Validation error", err)
-			http.Error(rw, fmt.Sprintf("Validation error: %s", err), http.StatusBadRequest)
+			l.Printf("[ERROR] Validation error: %s", err.Error())
+			http.Error(rw, status(err.Error()), http.StatusBadRequest)
 			return
 		}
 
 		m := NewMessage(items)
 		if h.coordinator.canCommit(m) == false {
 			h.coordinator.abort(m)
-			http.Error(rw, "Unable to add items", http.StatusInternalServerError)
+			http.Error(rw, status("Unable to add items"), http.StatusInternalServerError)
 			return
 		}
-		h.coordinator.commit(m)
+
+		if err := h.coordinator.commit(m); err != nil {
+			http.Error(rw, status("Unable to add items"), http.StatusInternalServerError)
+			return
+		}
+
 		if err := json.NewEncoder(rw).Encode(Status{Message: "Success"}); err != nil {
 			return
 		}
@@ -118,7 +128,7 @@ func (h *CounterAdd) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 		body, err := ioutil.ReadAll(r.Body)
 		if err != nil {
 			l.Println("[ERROR] Unable to read body:", err.Error())
-			http.Error(rw, fmt.Sprintf("Unable to read body: %s", err), http.StatusBadRequest)
+			http.Error(rw, status(fmt.Sprintf("Unable to read body: %s", err)), http.StatusBadRequest)
 			return
 		}
 
@@ -129,7 +139,7 @@ func (h *CounterAdd) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 
 		if err := json.NewEncoder(rw).Encode(items); err != nil {
 			l.Println("[ERROR] Unable to marshal json:", err)
-			http.Error(rw, "Unable to marshall json", http.StatusInternalServerError)
+			http.Error(rw, status("Unable to marshal json"), http.StatusInternalServerError)
 			return
 		}
 

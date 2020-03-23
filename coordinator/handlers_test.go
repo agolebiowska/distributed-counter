@@ -68,7 +68,7 @@ func TestItemsAdd_ServeHTTP(t *testing.T) {
 			method:     http.MethodPost,
 			counters:   []*Counter{},
 			body:       `[{"ID":"", "tenant":""}]`,
-			want:       `Validation error: both values are required`,
+			want:       `{"message":"both values are required"}`,
 			statusCode: http.StatusBadRequest,
 		},
 		{
@@ -80,7 +80,7 @@ func TestItemsAdd_ServeHTTP(t *testing.T) {
 				{Addr: "initError", HasItems: true},
 			},
 			body:       `[{"ID":"item-1", "tenant":"tenant-1"}]`,
-			want:       `Unable to add items`,
+			want:       `{"message":"Unable to add items"}`,
 			statusCode: http.StatusInternalServerError,
 		},
 		{
@@ -92,8 +92,20 @@ func TestItemsAdd_ServeHTTP(t *testing.T) {
 				{Addr: "commitError", HasItems: true},
 			},
 			body:       `[{"ID":"item-1", "tenant":"tenant-1"}]`,
-			want:       `{"message":"Success"}`,
-			statusCode: http.StatusOK,
+			want:       `{"message":"Unable to add items"}`,
+			statusCode: http.StatusInternalServerError,
+		},
+		{
+			name:   "counter abort fail",
+			method: http.MethodPost,
+			counters: []*Counter{
+				{Addr: "noError", HasItems: true},
+				{Addr: "noError", HasItems: true},
+				{Addr: "abortError", HasItems: true},
+			},
+			body:       `[{"ID":"item-1", "tenant":"tenant-1"}]`,
+			want:       `{"message":"Unable to add items"}`,
+			statusCode: http.StatusInternalServerError,
 		},
 		{
 			name:   "no counter fail",
@@ -104,6 +116,16 @@ func TestItemsAdd_ServeHTTP(t *testing.T) {
 				{Addr: "noError", HasItems: true},
 			},
 			body:       `[{"ID":"item-1", "tenant":"tenant-1"}]`,
+			want:       `{"message":"Success"}`,
+			statusCode: http.StatusOK,
+		},
+		{
+			name:   "multiple items",
+			method: http.MethodPost,
+			counters: []*Counter{
+				{Addr: "noError", HasItems: true},
+			},
+			body:       `[{"ID":"item-1", "tenant":"tenant-1"}, {"ID":"item-2", "tenant":"tenant-1"}]`,
 			want:       `{"message":"Success"}`,
 			statusCode: http.StatusOK,
 		},
@@ -188,13 +210,13 @@ func abortError(p string) *http.Response {
 	case "/init":
 		return &http.Response{
 			StatusCode: 200,
-			Body:       ioutil.NopCloser(bytes.NewBufferString(`KO`)),
+			Body:       ioutil.NopCloser(bytes.NewBufferString(`OK`)),
 			Header:     make(http.Header),
 		}
 	case "/abort":
 		return &http.Response{
 			StatusCode: 500,
-			Body:       ioutil.NopCloser(bytes.NewBufferString(`OK`)),
+			Body:       ioutil.NopCloser(bytes.NewBufferString(`KO`)),
 			Header:     make(http.Header),
 		}
 	default:
@@ -207,13 +229,13 @@ func commitError(p string) *http.Response {
 	case "/init":
 		return &http.Response{
 			StatusCode: 200,
-			Body:       ioutil.NopCloser(bytes.NewBufferString(`KO`)),
+			Body:       ioutil.NopCloser(bytes.NewBufferString(`OK`)),
 			Header:     make(http.Header),
 		}
 	case "/commit":
 		return &http.Response{
 			StatusCode: 500,
-			Body:       ioutil.NopCloser(bytes.NewBufferString(`OK`)),
+			Body:       ioutil.NopCloser(bytes.NewBufferString(`KO`)),
 			Header:     make(http.Header),
 		}
 	default:

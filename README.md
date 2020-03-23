@@ -36,7 +36,7 @@ Show logs form containers
 $ make log 
 ```  
 
-Run simulation
+Run system simulation
 
 ```shell
 $ make simulate 
@@ -62,7 +62,8 @@ DEBUG_PORT=40000
 
 ### Overview 
 
-The requirements are focused mostly on data consistency and handling child node failures. I decided to choose one matching scenario described in the given article (http://book.mixu.net/distsys/abstractions.html).
+The requirements are focused mostly on data consistency and handling child node failures.
+I decided to choose one matching scenario described in the given article (http://book.mixu.net/distsys/abstractions.html).
 <img align="right" alt="gopher" align="center" src="http://book.mixu.net/distsys/images/CAP.png" width="20%">
 
 - `AP` design was not the case because of the consistency requirement.
@@ -75,7 +76,7 @@ The requirements are focused mostly on data consistency and handling child node 
 - It is not partition tolerant.
 
 The above drawback may lead to system performance bottleneck too. It is sacrifice of efficiency.
-Using this approach it was possible to achieve three of the ACID principles: `atomicity`, `consistency` and `read-write isolation`. 
+Using this approach it was also possible to achieve three of the ACID principles: `atomicity`, `consistency` and `read-write isolation`. 
 
 ### Flow
 
@@ -85,7 +86,7 @@ Using this approach it was possible to achieve three of the ACID principles: `at
 <img align="center" alt="gopher" align="center" src="https://raw.githubusercontent.com/agolebiowska/distributed-counter/master/.img/3.png" width="50%">
 
 #### Add items
-- Coordinator sends unique message to all counters.
+- Coordinator sends unique message to `all` counters.
 - Counters must make a decision if they can save items.
 - If one or more counters refuse `all` will receive request to forget about previous message.
 <img align="center" alt="gopher" align="center" src="https://raw.githubusercontent.com/agolebiowska/distributed-counter/master/.img/1.png" width="50%"> 
