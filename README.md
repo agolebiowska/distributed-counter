@@ -32,7 +32,7 @@ Run tests
 $ make test 
 ```  
 
-Show logs form containers
+Show logs from containers
 
 ```shell
 $ make log 
