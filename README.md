@@ -1,5 +1,7 @@
 # Distributed counter
 
+[![Build Status](https://travis-ci.org/agolebiowska/distributed-counter.svg?branch=master)](https://travis-ci.org/agolebiowska/distributed-counter)  
+
 This is a distributed service, consisting of multiple isolated processes
 which can count the number of items, grouped by tenants that are delivered
 through an HTTP restful interface.
