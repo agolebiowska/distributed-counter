@@ -51,6 +51,10 @@ func main() {
 						c.Counters[i].IsDead = true
 						c.Counters[i].RecoveryTries++
 						l.Printf("[INFO] %s not query able", counter.Addr)
+						continue
+					}
+					if c.Counters[i].IsDead {
+						c.Counters[i].IsDead = false
 					}
 				}
 			}
