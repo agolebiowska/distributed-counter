@@ -14,10 +14,16 @@ through an HTTP restful interface.
 
 ## Setup
 
-Build & run
+Build & run coordinator with 3 counters
 
 ```shell
-$ make up
+$ make up 
+```
+
+or specify different number of counters
+
+```shell
+$ make up COUNTERS=5
 ```
 
 or if you want to debug
@@ -100,7 +106,7 @@ Using this approach it was also possible to achieve three of the ACID principles
 <img align="center" alt="gopher" align="center" src="https://raw.githubusercontent.com/agolebiowska/distributed-counter/master/.img/4.png" width="50%">
 
 #### Health checks
-- Coordinator performs health checks every 10 seconds. `Todo: make health check interval configurable.`
+- Coordinator performs counters health checks every 10 seconds. `Todo: make health check interval configurable.`
 - If a counter not respond or respond with an error it is marked as dead and it is not query-able.
 - After 4 more unsuccessful responses coordinator removes that counter. `Todo: make number of recovery tries configurable.`
 - Docker performs coordinator health checks every 30 seconds.
